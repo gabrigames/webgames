@@ -718,6 +718,13 @@ async function saveScore(name, sc){
 // ---------------------------------------------------------------
 // INPUT
 // ---------------------------------------------------------------
+window.addEventListener('click', () =>{
+  if(state==='title'){
+    resetGame(); state='playing'; 
+    return;
+  }
+});
+
 window.addEventListener('keydown', (e)=>{
   if(state==='title'){
     if(e.key==='Enter'){ resetGame(); state='playing'; }
