@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Demon Hunter — Word Strike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --shell-purple:#5b4a8a;
+    --shell-purple-dark:#3e3164;
+    --shell-purple-light:#7b68b3;
+    --screen-bezel:#1a1530;
+    --hud-bg:#1e1638;
+    --hud-border:#f4d35e;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    background:radial-gradient(circle at 50% 30%, #2b2450 0%, #120e24 70%);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Press Start 2P', monospace;
+    color:#fff;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .console{
+    background:linear-gradient(160deg, var(--shell-purple-light), var(--shell-purple) 40%, var(--shell-purple-dark));
+    border-radius:24px 24px 60px 24px;
+    padding:22px 22px 34px 22px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.15);
+    position:relative;
+    width:min(92vw, 684px);
+    max-height:96vh;
+  }
+  .console:before{
+    content:"";
+    position:absolute; top:14px; right:26px;
+    width:10px;height:10px;border-radius:50%;
+    background:#ff5d5d;
+    box-shadow:0 0 8px 2px rgba(255,93,93,.8);
+  }
+  .brand{
+    position:absolute; top:14px; left:26px;
+    font-size:8px; letter-spacing:1px; color:rgba(255,255,255,.85);
+  }
+  .screen-bezel{
+    background:var(--screen-bezel);
+    border-radius:10px;
+    padding:14px;
+    box-shadow:inset 0 0 10px rgba(0,0,0,.8);
+    margin-top:18px;
+  }
+  canvas{
+    display:block;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    width:100%;
+    max-width:640px;
+    aspect-ratio:4/3;
+    height:auto;
+    background:#000;
+    border-radius:2px;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  .scanlines{
+    position:relative;
+  }
+  .scanlines:after{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px,
+      rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.12) 3px
+    );
+    pointer-events:none;
+    border-radius:2px;
+  }
+  .buttons-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-top:20px; padding:0 6px;
+  }
+  .dpad{
+    width:64px;height:64px;position:relative;
+  }
+  .dpad div{
+    position:absolute; background:#2b2450; border-radius:2px;
+  }
+  .dpad .v{ width:20px;height:64px; left:22px; top:0; }
+  .dpad .h{ width:64px;height:20px; left:0; top:22px; }
+  .ab{ display:flex; gap:10px; transform:rotate(-18deg); }
+  .ab span{
+    width:30px;height:30px;border-radius:50%;
+    background:linear-gradient(160deg,#e85a6e,#a12f42);
+    display:flex; align-items:center;justify-content:center;
+    font-size:9px; box-shadow:inset 0 -3px 0 rgba(0,0,0,.3), 0 3px 4px rgba(0,0,0,.4);
+  }
+  .hint{
+    text-align:center; margin-top:14px; font-size:8px; color:rgba(255,255,255,.65);
+    letter-spacing:1px;
+  }
+
+  /* Nickname modal, styled like a GB dialogue box */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,6,20,.75);
+    display:none; align-items:center; justify-content:center; z-index:50;
+  }
+  .modal-overlay.active{ display:flex; }
+  .gb-dialog{
+    background:#1e1638; border:4px solid #f4d35e; border-radius:6px;
+    padding:22px 26px; width:360px; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.6);
+    font-family:'Press Start 2P', monospace;
+  }
+  .gb-dialog h2{ font-size:13px; color:#f4d35e; margin:0 0 14px; letter-spacing:1px;}
+  .gb-dialog p{ font-size:9px; line-height:1.7; color:#d8d0f0; margin:0 0 16px;}
+  .gb-dialog input{
+    width:100%; padding:10px; font-family:'Press Start 2P', monospace;
+    font-size:11px; background:#0f0a1e; border:3px solid #7b68b3; color:#fff;
+    border-radius:3px; text-align:center; outline:none; letter-spacing:2px;
+    text-transform:uppercase;
+  }
+  .gb-dialog input:focus{ border-color:#f4d35e; }
+  .gb-dialog button{
+    margin-top:16px; font-family:'Press Start 2P', monospace;
+    font-size:10px; padding:10px 18px; background:#e85a6e; color:#fff;
+    border:none; border-radius:4px; cursor:pointer; letter-spacing:1px;
+    box-shadow:0 3px 0 #a12f42;
+  }
+  .gb-dialog button:active{ transform:translateY(2px); box-shadow:0 1px 0 #a12f42; }
+  .gb-dialog .note{ font-size:7px; color:rgba(216,208,240,.6); margin-top:12px; line-height:1.6;}
+
+  /* Invisible field used only to summon the mobile keyboard */
+  .hidden-typer{
+    position:fixed; top:0; left:0;
+    width:1px; height:1px; opacity:0;
+    border:none; padding:0; margin:0;
+    font-size:16px; /* prevents iOS auto-zoom on focus */
+  }
+
+  @media (max-width:520px){
+    .console{ padding:14px 14px 22px 14px; border-radius:18px 18px 40px 18px; }
+    .brand{ font-size:6px; top:9px; left:16px; }
+    .console:before{ top:10px; right:16px; width:8px; height:8px; }
+    .buttons-row{ margin-top:12px; }
+    .dpad{ width:46px; height:46px; }
+    .dpad .v{ width:14px; height:46px; left:16px; }
+    .dpad .h{ height:14px; top:16px; }
+    .ab span{ width:22px; height:22px; font-size:7px; }
+    .hint{ font-size:6px; margin-top:10px; }
+    .gb-dialog{ width:88vw; padding:18px 16px; }
+  }
+
+  /* Applied via JS when the on-screen keyboard eats most of the vertical space,
+     so the screen stays fully visible above it */
+  .console.compact{ padding:10px 10px 12px 10px; }
+  .console.compact .brand{ display:none; }
+  .console.compact .buttons-row{ display:none; }
+  .console.compact .hint{ margin-top:6px; font-size:6px; }
+  .console.compact .screen-bezel{ margin-top:0; }
+</style>
+</head>
+<body>
+
+<div class="console">
+  <div class="brand">DEMON HUNTER™</div>
+  <div class="screen-bezel scanlines">
+    <canvas id="game" width="320" height="240"></canvas>
+  </div>
+  <div class="buttons-row">
+    <div class="dpad"><div class="v"></div><div class="h"></div></div>
+    <div class="ab"><span>B</span><span>A</span></div>
+  </div>
+  <div class="hint">DIGITA LE PAROLE — INVIO O TOCCA LO SCHERMO PER INIZIARE</div>
+</div>
+
+<input type="text" id="hiddenTyper" class="hidden-typer" autocomplete="off" autocorrect="off"
+  autocapitalize="off" spellcheck="false" inputmode="text" aria-hidden="true" tabindex="-1">
+
+<div class="modal-overlay" id="nameModal">
+  <div class="gb-dialog">
+    <h2>SEI CADUTO...</h2>
+    <p id="finalScoreText">PUNTEGGIO: 0</p>
+    <input id="nickInput" maxlength="10" placeholder="IL TUO NOME" autocomplete="off">
+    <br>
+    <button id="submitScoreBtn">SALVA E CONTINUA</button>
+    <div class="note">Il punteggio verrà salvato in una classifica visibile a chiunque giochi a questa pagina.</div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const W = canvas.width, H = canvas.height;
+const PLAYER_X = W/2, PLAYER_Y = H - 34;
+
+// ---------------------------------------------------------------
+// PALETTE
+// ---------------------------------------------------------------
+const PAL = {
+  fire:   {p:'#e8544b', s:'#a12f2a', e:'#ffe9a8'},
+  ice:    {p:'#5bc9e0', s:'#2a7f96', e:'#ffffff'},
+  earth:  {p:'#9a6b3f', s:'#5e3e22', e:'#e8d27a'},
+  wind:   {p:'#7be08a', s:'#3f9450', e:'#ffffff'},
+  shadow: {p:'#6a4b9e', s:'#39285e', e:'#c8a8ff'},
+  poison: {p:'#9bc23c', s:'#5b7a1e', e:'#ffe9a8'},
+};
+
+// ---------------------------------------------------------------
+// SPRITE TEMPLATES (pixel grids)
+// ---------------------------------------------------------------
+const BLOB = [
+".000000.",
+"00000000",
+"00011000",
+"00011000",
+"00000000",
+"02000020",
+"00222000",
+"00000000",
+".000000.",
+"..0000..",
+];
+const HORNS_1 = [
+"3......3",
+];
+const HORNS_2 = [
+"3.3..3.3",
+];
+const CROWN = [
+".5.55.5.",
+"5.5..5.5",
+];
+
+const PLAYER = [
+"...HHHH...",
+"..HHHHHH..",
+".HHHHHHHH.",
+".HSSSSSH..",
+".HSEPESH..",
+".HSSSSSH..",
+".HHHHHHH..",
+".HCCCCCH..",
+".HCCCCCH..",
+".HCBBBCH..",
+"..BB.BB...",
+".BBB.BBB..",
+];
+const PLAYER_COLORS = { H:'#7a2c3e', S:'#f2c896', E:'#ffffff', P:'#20141a', C:'#c9445a', B:'#3a2a1e' };
+
+function drawGrid(grid, ox, oy, size, colorMap){
+  for(let r=0;r<grid.length;r++){
+    const row = grid[r];
+    for(let c=0;c<row.length;c++){
+      const ch = row[c];
+      if(ch==='.'||ch===' ') continue;
+      const col = colorMap[ch];
+      if(!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(ox + c*size, oy + r*size, size, size);
+    }
+  }
+}
+
+function demonColorMap(hue, tier){
+  const pal = PAL[hue];
+  return { '0':pal.p, '1':pal.s, '2':pal.e, '3':'#f4d35e', '5':'#ffe066' };
+}
+
+function gridWidth(grid){ return Math.max(...grid.map(r=>r.length)); }
+
+function drawDemon(demon){
+  const tier = demon.tier;
+  let rows = BLOB.slice();
+  if(tier>=2) rows = HORNS_1.concat(rows);
+  if(tier>=3) rows = HORNS_2.concat(rows);
+  if(tier>=4) rows = CROWN.concat(rows);
+  const size = demon.pixelSize;
+  const w = gridWidth(rows)*size;
+  const h = rows.length*size;
+  const ox = demon.x - w/2;
+  const oy = demon.y - h/2;
+
+  // hit flash
+  if(demon.flash > 0){
+    ctx.save();
+    ctx.globalAlpha = 0.55;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(ox-2, oy-2, w+4, h+4);
+    ctx.restore();
+  }
+
+  drawGrid(rows, ox, oy, size, demonColorMap(demon.hue, tier));
+
+  // shadow under demon
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(demon.x, demon.y + h/2, w*0.35, 3, 0, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function drawPlayer(hitFlash){
+  const size = 4;
+  const w = gridWidth(PLAYER)*size;
+  const h = PLAYER.length*size;
+  const ox = PLAYER_X - w/2;
+  const oy = PLAYER_Y - h/2;
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(PLAYER_X, PLAYER_Y + h/2 - 2, w*0.4, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+  const cmap = hitFlash>0 ? {H:'#ffffff',S:'#ffffff',E:'#ffffff',P:'#ffffff',C:'#ffffff',B:'#ffffff'} : PLAYER_COLORS;
+  drawGrid(PLAYER, ox, oy, size, cmap);
+}
+
+// ---------------------------------------------------------------
+// WORD BANK / TIERS
+// ---------------------------------------------------------------
+const TIERS = [
+  { id:1, minScore:0,   speed:52, dmg:6,  atkInterval:900,  points:10, pixelSize:3,
+    species:[
+      {name:'Fire Imp',   words:['water'], hue:'fire'},
+      {name:'Frost Pup',  words:['flame'], hue:'ice'},
+      {name:'Rock Biter', words:['wind'],  hue:'earth'},
+      {name:'Gale Wisp',  words:['earth'], hue:'wind'},
+      {name:'Shade Bat',  words:['light'], hue:'shadow'},
+      {name:'Sludge',     words:['herb'],  hue:'poison'},
+    ]},
+  { id:2, minScore:60,  speed:34, dmg:12, atkInterval:1100, points:30, pixelSize:4,
+    species:[
+      {name:'Fire Fiend',   words:['tsunami'],   hue:'fire'},
+      {name:'Ice Behemoth', words:['wildfire'],  hue:'ice'},
+      {name:'Stone Titan',  words:['mountain'],  hue:'earth'},
+      {name:'Storm Drake',  words:['lightning'], hue:'wind'},
+      {name:'Wraith',       words:['sunlight'],  hue:'shadow'},
+      {name:'Toxic Horror', words:['antidote'],  hue:'poison'},
+    ]},
+  { id:3, minScore:180, speed:22, dmg:18, atkInterval:1300, points:70, pixelSize:5,
+    species:[
+      {name:'Inferno Lord', words:['hurricane','tsunami'],  hue:'fire'},
+      {name:'Frost Titan',  words:['wildfire','volcano'],   hue:'ice'},
+      {name:'Earth Warden', words:['avalanche','tornado'],  hue:'earth'},
+      {name:'Void Wraith',  words:['starlight','sunrise'],  hue:'shadow'},
+      {name:'Plague Beast', words:['moonflower','sunbeam'], hue:'poison'},
+    ]},
+  { id:4, minScore:420, speed:15, dmg:24, atkInterval:1500, points:150, pixelSize:6,
+    species:[
+      {name:'Demon Lord',  words:['hurricane','tsunami','thunder'], hue:'fire'},
+      {name:'Ancient Wyrm',words:['avalanche','volcano','eclipse'], hue:'shadow'},
+    ]},
+];
+
+// ---------------------------------------------------------------
+// STATE
+// ---------------------------------------------------------------
+let state = 'title'; // title | playing | gameover | leaderboard
+let demons = [];
+let score = 0;
+let hp = 100;
+let maxHp = 100;
+let typedBuffer = '';
+let spawnTimer = 0;
+let spawnInterval = 1800;
+let lastTime = 0;
+let playerHitFlash = 0;
+let titleBlink = 0;
+let leaderboardData = [];
+let demonIdCounter = 1;
+let killCount = 0;
+
+function resetGame(){
+  demons = [];
+  score = 0;
+  hp = maxHp;
+  typedBuffer = '';
+  spawnTimer = 0;
+  spawnInterval = 1800;
+  playerHitFlash = 0;
+  killCount = 0;
+}
+
+function eligibleTiers(){
+  return TIERS.filter(t => score >= t.minScore);
+}
+
+function pickTier(){
+  const elig = eligibleTiers();
+  const weights = elig.map((t,i)=> i===elig.length-1 ? 3 : (i===elig.length-2 ? 2 : 1));
+  const total = weights.reduce((a,b)=>a+b,0);
+  let r = Math.random()*total;
+  for(let i=0;i<elig.length;i++){
+    if(r < weights[i]) return elig[i];
+    r -= weights[i];
+  }
+  return elig[elig.length-1];
+}
+
+function spawnDemon(){
+  const tier = pickTier();
+  const species = tier.species[Math.floor(Math.random()*tier.species.length)];
+  const edge = ['top','left','right'][Math.floor(Math.random()*3)];
+  let x,y;
+  if(edge==='top'){ x = 24 + Math.random()*(W-48); y = -14; }
+  else if(edge==='left'){ x = -14; y = 20 + Math.random()*(H*0.55); }
+  else { x = W+14; y = 20 + Math.random()*(H*0.55); }
+
+  const dx = PLAYER_X - x, dy = PLAYER_Y - y;
+  const dist = Math.hypot(dx,dy);
+  const vx = dx/dist, vy = dy/dist;
+
+  demons.push({
+    id: demonIdCounter++,
+    name: species.name,
+    words: species.words.slice(),
+    wordIndex: 0,
+    hue: species.hue,
+    tier: tier.id,
+    speed: tier.speed,
+    dmg: tier.dmg,
+    atkInterval: tier.atkInterval,
+    points: tier.points,
+    pixelSize: tier.pixelSize,
+    x, y, vx, vy,
+    arrived: false,
+    atkTimer: 0,
+    flash: 0,
+    isTarget: false,
+  });
+}
+
+function currentWord(d){ return d.words[d.wordIndex]; }
+
+function updateTyping(){
+  if(typedBuffer.length===0){
+    demons.forEach(d=>d.isTarget=false);
+    return;
+  }
+  const buf = typedBuffer.toLowerCase();
+  demons.forEach(d=>{
+    const w = currentWord(d);
+    d.isTarget = w && w.startsWith(buf);
+  });
+}
+
+function handleChar(ch){
+  if(state!=='playing') return;
+  const test = (typedBuffer + ch).toLowerCase();
+  const anyMatch = demons.some(d => currentWord(d) && currentWord(d).startsWith(test));
+  if(!anyMatch){
+    // try starting fresh with just this char
+    const freshMatch = demons.some(d => currentWord(d) && currentWord(d).startsWith(ch.toLowerCase()));
+    typedBuffer = freshMatch ? ch : '';
+    updateTyping();
+    return;
+  }
+  typedBuffer = test;
+  updateTyping();
+
+  // check exact match -> resolve nearest demon with that exact word
+  let best = null, bestDist = Infinity;
+  demons.forEach(d=>{
+    const w = currentWord(d);
+    if(w && w.toLowerCase()===typedBuffer){
+      const dist = Math.hypot(d.x-PLAYER_X, d.y-PLAYER_Y);
+      if(dist < bestDist){ bestDist = dist; best = d; }
+    }
+  });
+  if(best){
+    resolveHit(best);
+    typedBuffer = '';
+    updateTyping();
+  }
+}
+
+function handleBackspace(){
+  typedBuffer = typedBuffer.slice(0,-1);
+  updateTyping();
+}
+
+function resolveHit(d){
+  d.wordIndex++;
+  d.flash = 8;
+  if(d.wordIndex >= d.words.length){
+    // dead
+    score += d.points;
+    killCount++;
+    demons = demons.filter(x=>x.id!==d.id);
+  }
+}
+
+function update(dt){
+  if(state!=='playing') return;
+
+  spawnTimer += dt;
+  const minInterval = 480;
+  spawnInterval = Math.max(minInterval, 1800 - score*1.3);
+  if(spawnTimer > spawnInterval){
+    spawnTimer = 0;
+    spawnDemon();
+  }
+
+  demons.forEach(d=>{
+    if(d.flash>0) d.flash -= dt/16;
+    if(!d.arrived){
+      d.x += d.vx * d.speed * dt/1000;
+      d.y += d.vy * d.speed * dt/1000;
+      const dist = Math.hypot(d.x-PLAYER_X, d.y-PLAYER_Y);
+      if(dist < 24){
+        d.arrived = true;
+        d.atkTimer = d.atkInterval*0.4;
+      }
+    } else {
+      d.atkTimer -= dt;
+      if(d.atkTimer<=0){
+        d.atkTimer = d.atkInterval;
+        hp -= d.dmg;
+        playerHitFlash = 10;
+        if(hp<=0){
+          hp = 0;
+          triggerGameOver();
+        }
+      }
+    }
+  });
+
+  if(playerHitFlash>0) playerHitFlash -= dt/16;
+}
+
+function triggerGameOver(){
+  state = 'gameover';
+  hiddenTyper.blur();
+  document.getElementById('finalScoreText').textContent = 'PUNTEGGIO: ' + score;
+  const overlay = document.getElementById('nameModal');
+  overlay.classList.add('active');
+  setTimeout(()=>document.getElementById('nickInput').focus(), 50);
+}
+
+// ---------------------------------------------------------------
+// RENDER
+// ---------------------------------------------------------------
+function drawBackground(){
+  // dusk sky
+  const skyH = H*0.42;
+  const grad = ctx.createLinearGradient(0,0,0,skyH);
+  grad.addColorStop(0,'#241b45');
+  grad.addColorStop(1,'#5c3a63');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,skyH);
+
+  // moon
+  ctx.fillStyle = '#f4e9c9';
+  ctx.beginPath();
+  ctx.arc(W-40, 30, 12, 0, Math.PI*2);
+  ctx.fill();
+
+  // silhouette hills
+  ctx.fillStyle = '#2a1f3d';
+  ctx.beginPath();
+  ctx.moveTo(0, skyH);
+  ctx.lineTo(0, skyH-14);
+  ctx.lineTo(50, skyH-28);
+  ctx.lineTo(110, skyH-10);
+  ctx.lineTo(180, skyH-30);
+  ctx.lineTo(250, skyH-8);
+  ctx.lineTo(W, skyH-22);
+  ctx.lineTo(W, skyH);
+  ctx.closePath();
+  ctx.fill();
+
+  // grass field
+  const tile = 16;
+  for(let y=skyH; y<H; y+=tile){
+    for(let x=0; x<W; x+=tile){
+      const idx = (Math.floor(x/tile)+Math.floor(y/tile))%2;
+      ctx.fillStyle = idx===0 ? '#3f7a3a' : '#376c33';
+      ctx.fillRect(x,y,tile,tile);
+    }
+  }
+
+  // summoning circle under player
+  ctx.strokeStyle = 'rgba(244,211,94,0.7)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(PLAYER_X, PLAYER_Y+20, 26, 8, 0, 0, Math.PI*2);
+  ctx.stroke();
+}
+
+function pixelText(txt, x, y, size, color, align){
+  ctx.font = size+'px "Press Start 2P", monospace';
+  ctx.fillStyle = color;
+  ctx.textAlign = align || 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(txt, x, y);
+}
+
+function drawWordAbove(d){
+  const w = currentWord(d);
+  if(!w) return;
+  const size = 8;
+  ctx.font = size+'px "Press Start 2P", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  const yy = d.y - (d.pixelSize*6) - 6;
+  const bob = Math.sin((Date.now()/300) + d.id) * 2;
+
+  const typed = (d.isTarget && typedBuffer.length>0) ? typedBuffer.toLowerCase() : '';
+  const matchLen = typed.length;
+
+  // background plate for readability
+  const fullW = ctx.measureText(w).width;
+  ctx.fillStyle = 'rgba(10,6,20,0.55)';
+  ctx.fillRect(d.x - fullW/2 - 3, yy + bob - size - 2, fullW+6, size+4);
+
+  // draw matched then unmatched
+  const matched = w.slice(0,matchLen);
+  const rest = w.slice(matchLen);
+  const matchedW = ctx.measureText(matched).width;
+  const restW = ctx.measureText(rest).width;
+  const startX = d.x - (matchedW+restW)/2;
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#ffe066';
+  ctx.fillText(matched, startX, yy+bob);
+  ctx.fillStyle = d.wordIndex>0 ? '#9bc23c' : '#ffffff';
+  ctx.fillText(rest, startX+matchedW, yy+bob);
+
+  if(d.words.length>1){
+    ctx.textAlign='center';
+    ctx.font = '6px "Press Start 2P", monospace';
+    ctx.fillStyle = '#ff9d9d';
+    ctx.fillText((d.wordIndex+1)+'/'+d.words.length, d.x, yy+bob-size-6);
+  }
+}
+
+function drawHUD(){
+  // HP bar
+  const barX=8, barY=6, barW=110, barH=10;
+  ctx.fillStyle='#1a1530'; ctx.fillRect(barX-2,barY-2,barW+4,barH+4);
+  ctx.fillStyle='#3a2a1e'; ctx.fillRect(barX,barY,barW,barH);
+  const hpRatio = Math.max(0,hp/maxHp);
+  ctx.fillStyle = hpRatio>0.5 ? '#5bd15b' : (hpRatio>0.2 ? '#e8c94b' : '#e8544b');
+  ctx.fillRect(barX,barY,barW*hpRatio,barH);
+  pixelText('HP', barX, barY+barH+3, 7, '#ffffff');
+
+  pixelText('SCORE '+score, W-8, 8, 8, '#f4d35e', 'right');
+
+  // typed buffer box
+  const boxY = H-16;
+  ctx.fillStyle='rgba(10,6,20,0.6)';
+  ctx.fillRect(6, boxY, W-12, 12);
+  pixelText('> '+typedBuffer, 10, boxY+2, 8, '#ffe066');
+}
+
+function drawTitle(){
+  drawBackground();
+  ctx.fillStyle='rgba(10,6,20,0.55)';
+  ctx.fillRect(0,0,W,H);
+  pixelText('DEMON', W/2, H*0.28, 22, '#e8544b', 'center');
+  pixelText('HUNTER', W/2, H*0.28+26, 22, '#f4d35e', 'center');
+  pixelText('WORD STRIKE', W/2, H*0.28+54, 8, '#c8a8ff', 'center');
+
+  titleBlink += 1;
+  if(Math.floor(titleBlink/30)%2===0){
+    pixelText('PREMI INVIO', W/2, H*0.72, 9, '#ffffff', 'center');
+  }
+  pixelText('DIGITA LE PAROLE MOSTRATE SOPRA', W/2, H*0.82, 6, '#d8d0f0', 'center');
+  pixelText('OGNI DEMONE PER SCONFIGGERLO', W/2, H*0.82+10, 6, '#d8d0f0', 'center');
+}
+
+function drawGameOverScreen(){
+  drawBackground();
+  demons.forEach(drawDemon);
+  drawPlayer(0);
+  ctx.fillStyle='rgba(10,6,20,0.65)';
+  ctx.fillRect(0,0,W,H);
+  pixelText('SEI CADUTO', W/2, H*0.35, 14, '#e8544b', 'center');
+  pixelText('PUNTEGGIO '+score, W/2, H*0.35+24, 9, '#f4d35e', 'center');
+}
+
+async function drawLeaderboard(){
+  ctx.fillStyle='#1a1530';
+  ctx.fillRect(0,0,W,H);
+  pixelText('CLASSIFICA', W/2, 14, 12, '#f4d35e', 'center');
+  const list = leaderboardData.slice(0,10);
+  list.forEach((entry,i)=>{
+    const y = 42 + i*18;
+    pixelText((i+1)+'.', 20, y, 8, '#c8a8ff');
+    pixelText(entry.name, 42, y, 8, '#ffffff');
+    pixelText(String(entry.score), W-20, y, 8, '#ffe066', 'right');
+  });
+  if(list.length===0){
+    pixelText('NESSUN PUNTEGGIO ANCORA', W/2, 60, 7, '#d8d0f0', 'center');
+  }
+  titleBlink += 1;
+  if(Math.floor(titleBlink/30)%2===0){
+    pixelText('PREMI INVIO PER GIOCARE', W/2, H-24, 7, '#ffffff', 'center');
+  }
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  if(state==='title'){ drawTitle(); return; }
+  if(state==='gameover'){ drawGameOverScreen(); return; }
+  if(state==='leaderboard'){ drawLeaderboard(); return; }
+
+  drawBackground();
+  demons.forEach(d=>{
+    drawDemon(d);
+    drawWordAbove(d);
+  });
+  drawPlayer(playerHitFlash);
+  drawHUD();
+}
+
+// ---------------------------------------------------------------
+// LOOP
+// ---------------------------------------------------------------
+function loop(ts){
+  const dt = lastTime ? Math.min(ts-lastTime, 50) : 16;
+  lastTime = ts;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+// ---------------------------------------------------------------
+// STORAGE / LEADERBOARD
+// ---------------------------------------------------------------
+async function loadLeaderboard(){
+  try{
+    const res = await window.storage.get('leaderboard', true);
+    leaderboardData = res && res.value ? JSON.parse(res.value) : [];
+    leaderboardData.sort((a,b)=>b.score-a.score);
+  }catch(e){
+    leaderboardData = [];
+  }
+}
+
+async function saveScore(name, sc){
+  try{
+    await loadLeaderboard();
+    leaderboardData.push({name: name.slice(0,10), score: sc});
+    leaderboardData.sort((a,b)=>b.score-a.score);
+    leaderboardData = leaderboardData.slice(0,20);
+    await window.storage.set('leaderboard', JSON.stringify(leaderboardData), true);
+  }catch(e){
+    console.error('Storage error', e);
+  }
+}
+
+// ---------------------------------------------------------------
+// VIEWPORT-AWARE LAYOUT (keeps the screen visible above the mobile keyboard)
+// ---------------------------------------------------------------
+const consoleEl = document.querySelector('.console');
+
+function layoutScreen(){
+  const vv = window.visualViewport;
+  const vw = vv ? vv.width : window.innerWidth;
+  const vh = vv ? vv.height : window.innerHeight;
+
+  // Reserve a little breathing room around the console
+  const availW = vw * 0.92;
+  const compact = vh < 420; // keyboard is likely open and eating most of the height
+  consoleEl.classList.toggle('compact', compact);
+
+  // Rough space the chrome around the canvas takes (padding, hint text, buttons)
+  const chrome = compact ? 46 : 130;
+  const availH = Math.max(120, vh - chrome);
+
+  let w = Math.min(availW, 640);
+  let h = w * 0.75; // 4:3 ratio
+  if(h > availH){
+    h = availH;
+    w = h * (4/3);
+  }
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  // Keep everything anchored to the top of the visible area (above the keyboard)
+  // rather than centered on the full layout viewport.
+  document.body.style.alignItems = compact ? 'flex-start' : 'center';
+  if(vv){
+    document.body.style.paddingTop = compact ? Math.max(4, vv.offsetTop) + 'px' : '0px';
+  }
+}
+
+window.addEventListener('resize', layoutScreen);
+window.addEventListener('orientationchange', ()=>setTimeout(layoutScreen,150));
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', layoutScreen);
+  window.visualViewport.addEventListener('scroll', layoutScreen);
+}
+layoutScreen();
+
+// ---------------------------------------------------------------
+// INPUT
+// ---------------------------------------------------------------
+const hiddenTyper = document.getElementById('hiddenTyper');
+
+function startGame(){
+  resetGame();
+  state = 'playing';
+  hiddenTyper.value = '';
+  hiddenTyper.focus({preventScroll:true});
+  setTimeout(layoutScreen, 300);
+  setTimeout(layoutScreen, 600);
+}
+
+// Desktop / physical keyboard
+window.addEventListener('keydown', (e)=>{
+  if(state==='title'){
+    if(e.key==='Enter'){ startGame(); }
+    return;
+  }
+  if(state==='leaderboard'){
+    if(e.key==='Enter'){ startGame(); }
+    return;
+  }
+  if(state==='gameover') return; // handled by modal
+
+  if(state==='playing'){
+    // While the hidden field is focused (mobile keyboard, or desktop after a tap),
+    // typing is handled by the 'input' listener below to avoid double counting.
+    if(document.activeElement === hiddenTyper) return;
+    if(e.key==='Backspace'){ e.preventDefault(); handleBackspace(); return; }
+    if(/^[a-zA-Z]$/.test(e.key)){ handleChar(e.key); }
+  }
+});
+
+// Tap / click on the screen: start the game, or re-open the keyboard mid-game
+canvas.addEventListener('click', ()=>{
+  if(state==='title' || state==='leaderboard'){
+    startGame();
+    return;
+  }
+  if(state==='playing'){
+    hiddenTyper.focus({preventScroll:true});
+    setTimeout(layoutScreen, 300);
+  }
+});
+
+// Mobile virtual keyboard: capture typed characters via the hidden input
+hiddenTyper.addEventListener('input', (e)=>{
+  if(state!=='playing'){ hiddenTyper.value=''; return; }
+  if(e.inputType === 'deleteContentBackward'){
+    handleBackspace();
+  } else if(e.data){
+    for(const ch of e.data){ if(/[a-zA-Z]/.test(ch)) handleChar(ch); }
+  } else if(hiddenTyper.value.length===0){
+    handleBackspace();
+  } else {
+    for(const ch of hiddenTyper.value){ if(/[a-zA-Z]/.test(ch)) handleChar(ch); }
+  }
+  hiddenTyper.value = '';
+});
+
+const modalOverlay = document.getElementById('nameModal');
+const nickInput = document.getElementById('nickInput');
+const submitBtn = document.getElementById('submitScoreBtn');
+
+async function submitScore(){
+  const name = (nickInput.value || 'HUNTER').trim() || 'HUNTER';
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'SALVATAGGIO...';
+  await saveScore(name, score);
+  await loadLeaderboard();
+  modalOverlay.classList.remove('active');
+  nickInput.value = '';
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'SALVA E CONTINUA';
+  state = 'leaderboard';
+  setTimeout(layoutScreen, 200);
+}
+
+submitBtn.addEventListener('click', submitScore);
+nickInput.addEventListener('keydown', (e)=>{
+  if(e.key==='Enter'){ e.preventDefault(); submitScore(); }
+  e.stopPropagation();
+});
+
+// ---------------------------------------------------------------
+// INIT
+// ---------------------------------------------------------------
+(async function init(){
+  try{
+    if(document.fonts && document.fonts.load){
+      await document.fonts.load('12px "Press Start 2P"');
+    }
+  }catch(e){}
+  await loadLeaderboard();
+  requestAnimationFrame(loop);
+})();
+
+})();
+</script>
+</body>
+</html>
