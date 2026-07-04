@@ -188,7 +188,7 @@
     <input id="nickInput" maxlength="10" placeholder="IL TUO NOME" autocomplete="off">
     <br>
     <button id="submitScoreBtn">SALVA E CONTINUA</button>
-    <div class="note">Il punteggio verrà salvato in una classifica visibile a chiunque giochi a questa pagina.</div>
+    <div class="note">Il punteggio verrà salvato nella classifica di questo browser/dispositivo.</div>
   </div>
 </div>
 
@@ -733,11 +733,16 @@ function loop(ts){
 
 // ---------------------------------------------------------------
 // STORAGE / LEADERBOARD
+// (uses localStorage: works on any real hosting, e.g. GitHub Pages.
+//  Note: this keeps the leaderboard local to each player's own browser.
+//  See the chat notes if you want a leaderboard shared across all visitors.)
 // ---------------------------------------------------------------
+const LEADERBOARD_KEY = 'demonHunterLeaderboard';
+
 async function loadLeaderboard(){
   try{
-    const res = await window.storage.get('leaderboard', true);
-    leaderboardData = res && res.value ? JSON.parse(res.value) : [];
+    const raw = localStorage.getItem(LEADERBOARD_KEY);
+    leaderboardData = raw ? JSON.parse(raw) : [];
     leaderboardData.sort((a,b)=>b.score-a.score);
   }catch(e){
     leaderboardData = [];
@@ -750,7 +755,7 @@ async function saveScore(name, sc){
     leaderboardData.push({name: name.slice(0,10), score: sc});
     leaderboardData.sort((a,b)=>b.score-a.score);
     leaderboardData = leaderboardData.slice(0,20);
-    await window.storage.set('leaderboard', JSON.stringify(leaderboardData), true);
+    localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboardData));
   }catch(e){
     console.error('Storage error', e);
   }
