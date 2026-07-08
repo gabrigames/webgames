@@ -178,6 +178,7 @@
     background: radial-gradient(circle at 32% 26%, rgba(255,255,255,.55), rgba(255,255,255,0) 45%);
     pointer-events:none;
   }
+  .gem-shape.has-image::before{ content:none; }
 
   .gem-0{ /* sfera rossa */
     border-radius:50%;
@@ -564,15 +565,14 @@
   //   }
   // ============================================================
 
-
   const firebaseConfig = {
-	  apiKey: "AIzaSyCFHlTp67CIMm-QhUJ7XpB6P0022Xiq_xc",
-	  authDomain: "match-3-game-4330c.firebaseapp.com",
-	  projectId: "match-3-game-4330c",
-	  storageBucket: "match-3-game-4330c.firebasestorage.app",
-	  messagingSenderId: "235545541112",
-	  appId: "1:235545541112:web:924cd3c88dd86f4b00be0d"
-	};
+    apiKey: "INCOLLA_QUI_LA_TUA_API_KEY",
+    authDomain: "INCOLLA_QUI_IL_TUO_AUTH_DOMAIN",
+    projectId: "INCOLLA_QUI_IL_TUO_PROJECT_ID",
+    storageBucket: "INCOLLA_QUI_IL_TUO_STORAGE_BUCKET",
+    messagingSenderId: "INCOLLA_QUI_IL_TUO_MESSAGING_SENDER_ID",
+    appId: "INCOLLA_QUI_IL_TUO_APP_ID"
+  };
 
   const LEADERBOARD_COLLECTION = 'gemmeDelTempo_leaderboard';
 
@@ -645,6 +645,32 @@
   const DUR_FALL = REDUCED ? 10 : 300;
   const DUR_SHAKE= REDUCED ? 10 : 300;
 
+  // ============================================================
+  // IMMAGINI PERSONALIZZATE PER LE GEMME (opzionale)
+  // ============================================================
+  // Vuoi usare disegni/foto tue al posto delle forme colorate in CSS?
+  // Inserisci qui, per ogni tipo (0-4), il percorso del file oppure un
+  // data:URL. Lascia la stringa vuota '' per tenere la forma CSS di default
+  // per quel tipo (puoi mischiare: alcune immagini tue, altre CSS).
+  //
+  // Opzione A — file esterni: metti le immagini in una cartella accanto
+  // a questo file .html (es. una cartella "img/") e scrivi il percorso
+  // relativo, es: 0: 'img/sfera-rossa.png'
+  //
+  // Opzione B — immagine incorporata (nessun file da gestire a parte,
+  // il gioco resta un unico file .html): incolla una stringa tipo
+  // 'data:image/png;base64,iVBORw0KGgoAAAANSU...'
+  //
+  // Consigli sui file: PNG o SVG con sfondo trasparente, formato quadrato
+  // (es. 128x128px), soggetto centrato con un po' di margine attorno.
+  const GEM_IMAGES = {
+    0: 'img/red-gem.png', // sfera rossa
+    1: 'img/blue-gem.png', // quadrato blu
+    2: 'img/purple-gem.png', // esagono viola
+    3: 'img/green-gem.png', // triangolo verde
+    4: 'img/hourglass.png'  // clessidra
+  };
+
   const boardEl = document.getElementById('board');
   const boardWrap = document.getElementById('boardWrap');
   const scoreEl = document.getElementById('score');
@@ -683,8 +709,20 @@
   function setGemType(shapeEl, type){
     shapeEl.className = 'gem-shape gem-' + type;
     shapeEl.dataset.type = type;
-    if(type === 4){
-      if(!shapeEl.querySelector('.sand')){
+    const imgUrl = GEM_IMAGES[type];
+    if(imgUrl){
+      shapeEl.classList.add('has-image');
+      shapeEl.style.backgroundImage = 'url("' + imgUrl + '")';
+      shapeEl.style.backgroundSize = 'contain';
+      shapeEl.style.backgroundPosition = 'center';
+      shapeEl.style.backgroundRepeat = 'no-repeat';
+      shapeEl.style.clipPath = 'none';
+      const existingSand = shapeEl.querySelector('.sand');
+      if(existingSand) existingSand.remove();
+    } else {
+      shapeEl.style.backgroundImage = '';
+      shapeEl.style.clipPath = '';
+      if(type === 4 && !shapeEl.querySelector('.sand')){
         const sand = document.createElement('div');
         sand.className = 'sand';
         shapeEl.appendChild(sand);
