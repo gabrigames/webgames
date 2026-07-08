@@ -701,7 +701,20 @@
   let lastNickname = '';
 
   function wait(ms){ return new Promise(res => setTimeout(res, ms)); }
-  function randomType(){ return Math.floor(Math.random() * TYPES); }
+  //function randomType(){ return Math.floor(Math.random() * TYPES); } //funzione originale
+
+  const GEM_WEIGHTS = [1, 1, 1, 1, 0.6]; // clessidra ha meno probabilità di uscire
+
+  function randomType(){
+    const total = GEM_WEIGHTS.reduce((a,b) => a+b, 0);
+    let r = Math.random() * total;
+    for(let i=0; i<GEM_WEIGHTS.length; i++){
+      if(r < GEM_WEIGHTS[i]) return i;
+      r -= GEM_WEIGHTS[i];
+    }
+    return GEM_WEIGHTS.length - 1;
+  }
+  
   function areAdjacent(r1,c1,r2,c2){
     const dr = Math.abs(r1-r2), dc = Math.abs(c1-c2);
     return (dr+dc) === 1;
